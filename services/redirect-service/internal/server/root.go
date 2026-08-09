@@ -1,94 +1,84 @@
 package server
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"net"
 	"net/http"
-	"os"
+	"os/signal"
+	"redirect-service/internal/config"
 	"redirect-service/pkg/logger"
-	"strconv"
+	"syscall"
+	"time"
 
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-var (
-	ip         = net.IPv4(127, 0, 0, 1)
-	port       = 8000
-	httpServer *http.Server
-)
+// Run starts the public and admin servers and blocks until a termination
+// signal arrives or either server fails.
+func Run(ctx context.Context, cfg *config.Config, public, admin http.Handler, drain func()) error {
+	publicSrv := New(cfg, public)
+	adminSrv := NewAdmin(cfg, admin)
 
-func LoadServerConfig() {
-	serverPort := os.Getenv("SERVER_PORT")
-	if serverPort != "" {
-		port, _ = strconv.Atoi(serverPort)
+	publicLn, err := net.Listen("tcp", cfg.Addr())
+	if err != nil {
+		return fmt.Errorf("binding %s: %w", cfg.Addr(), err)
 	}
 
-	serverIP := os.Getenv("SERVER_IP")
-	if serverIP != "" {
-		parsedIP, _, err := net.ParseCIDR(serverIP + "/32")
-		if err == nil {
-			ip = parsedIP
-		}
+	adminLn, err := net.Listen("tcp", cfg.AdminAddr())
+	if err != nil {
+		publicLn.Close()
+		return fmt.Errorf("binding %s: %w", cfg.AdminAddr(), err)
 	}
-}
 
-func Start() {
-	log := logger.Log.WithOptions(zap.Fields(
-		zap.String("ip", ip.String()),
-	))
+	errCh := make(chan error, 2)
 
-	log.Debug("starting engine")
-
-	// Sets default size only if not set
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.New()
-
-	// delete server part from header
-	router.Use(func(c *gin.Context) {
-		c.Writer.Header().Del("Server")
-		c.Next()
-	})
-
-	// router.Use(middlewares.NoCache())
-	// router.Use(middlewares.Session())
-	// router.Use(middlewares.CORS())
-	//router.Use(middlewares.Security())
-
-	//handlers.SetupRouter(router)
-	httpServer = Initialize(ip, port, router)
+	// Start serving the public http server
 	go func() {
-		errorsStartingUp := 0
-		var err error
-
-		for errorsStartingUp < 5 {
-			log.Info("attempting to start HTTP server",
-				zap.Int("port", port),
-				zap.Int("errorsStartingUp", errorsStartingUp),
-			)
-
-			httpServer = Initialize(ip, port, router)
-
-			err = httpServer.ListenAndServe()
-			if err != nil {
-				log.Info("retrying to start HTTP server, because of an error",
-					zap.Int("port", port),
-					zap.Int("errorsStartingUp", errorsStartingUp),
-					zap.Error(err),
-				)
-
-				port++
-				errorsStartingUp++
-				continue
-			}
-			break
+		logger.Log.Info("public server listening", zap.String("addr", cfg.Addr()))
+		if err := publicSrv.Serve(publicLn); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- fmt.Errorf("public server: %w", err)
 		}
-
-		log.Panic("failed to start HTTP server",
-			zap.Int("port", port),
-			zap.Int("errorsStartingUp", errorsStartingUp),
-			zap.Error(err),
-		)
 	}()
 
-	Wait(httpServer, log)
+	// Start serving the admin http server
+	go func() {
+		logger.Log.Info("admin server listening", zap.String("addr", cfg.AdminAddr()))
+		if err := adminSrv.Serve(adminLn); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- fmt.Errorf("admin server: %w", err)
+		}
+	}()
+
+	signalCtx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-signalCtx.Done():
+		logger.Log.Info("shutdown signal received")
+	}
+
+	return shutdown(cfg, publicSrv, adminSrv, drain)
+}
+
+func shutdown(cfg *config.Config, publicSrv, adminSrv *http.Server, drain func()) error {
+
+	drain()
+	logger.Log.Info("draining", zap.Duration("for", cfg.ReadinessDrain))
+	time.Sleep(cfg.ReadinessDrain)
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+	defer cancel()
+
+	if err := publicSrv.Shutdown(ctx); err != nil {
+		logger.Log.Error("public server shutdown", zap.Error(err))
+	}
+	if err := adminSrv.Shutdown(ctx); err != nil {
+		logger.Log.Error("admin server shutdown", zap.Error(err))
+	}
+
+	logger.Log.Info("stopped")
+	return nil
 }

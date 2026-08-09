@@ -1,34 +1,24 @@
 package migrations
 
-import (
-	"redirect-service/pkg/logger"
-	"redirect-service/platform/database"
+// //go:embed sql/*.sql
+// var migrationFS embed.FS
 
-	"go.uber.org/zap"
-)
+// // Run applies every pending migration. The DSN must use the pgx5 scheme and
+// // name this service's ledger table; see config.MigrationDSN.
+// func Run(dsn string) error {
+// 	src, err := iofs.New(migrationFS, "sql")
+// 	if err != nil {
+// 		return fmt.Errorf("loading embedded migrations: %w", err)
+// 	}
 
-func ExecuteMigrations() (err error) {
-	conf := database.NewDatabaseConfig()
-	err = database.Connect(conf)
-	if err != nil {
-		logger.Log.Error("failed to connect to database",
-			zap.Error(err),
-		)
-		return
-	}
+// 	m, err := migrate.NewWithSourceInstance("iofs", src, dsn)
+// 	if err != nil {
+// 		return fmt.Errorf("creating migrator: %w", err)
+// 	}
+// 	defer m.Close()
 
-	// AutoMigrate the models
-	if err := database.DB.
-		AutoMigrate(
-		//&models.UserCredentials{},
-		); err != nil {
-		logger.Log.Fatal("failed to auto-migrate",
-			zap.Error(err),
-		)
-		return err
-	}
-
-	logger.Log.Info("Migration ran successfully")
-
-	return nil
-}
+// 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+// 		return fmt.Errorf("applying migrations: %w", err)
+// 	}
+// 	return nil
+// }

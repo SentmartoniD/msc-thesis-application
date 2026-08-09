@@ -1,8 +1,11 @@
 package config
 
 import (
+	"fmt"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -11,13 +14,17 @@ type Config struct {
 	// Service
 	ServiceName string
 
-	// HTTP server
+	// Public HTTP server
 	ServerHost        string
 	ServerPort        int
 	ReadTimeout       time.Duration
 	ReadHeaderTimeout time.Duration
 	WriteTimeout      time.Duration
 	IdleTimeout       time.Duration
+
+	// Admin HTTP server
+	AdminPort         int
+	AdminWriteTimeout time.Duration
 
 	// Shutdown
 	ReadinessDrain  time.Duration
@@ -37,7 +44,7 @@ type Config struct {
 	DBMaxConnIdleTime time.Duration
 	DBConnectTimeout  time.Duration
 
-	// Default false
+	// Migrations default is false
 	RunMigrations bool
 
 	// Logging
@@ -59,6 +66,9 @@ func Load(serviceName string) (*Config, error) {
 		ReadHeaderTimeout: getEnvDuration("SERVER_READ_HEADER_TIMEOUT", 5*time.Second),
 		WriteTimeout:      getEnvDuration("SERVER_WRITE_TIMEOUT", 10*time.Second),
 		IdleTimeout:       getEnvDuration("SERVER_IDLE_TIMEOUT", 120*time.Second),
+
+		AdminPort:         getEnvInt("ADMIN_PORT", 9090),
+		AdminWriteTimeout: getEnvDuration("ADMIN_WRITE_TIMEOUT", 10*time.Second),
 
 		ReadinessDrain:  getEnvDuration("SHUTDOWN_READINESS_DRAIN", 5*time.Second),
 		ShutdownTimeout: getEnvDuration("SHUTDOWN_TIMEOUT", 15*time.Second),
@@ -87,10 +97,10 @@ func Load(serviceName string) (*Config, error) {
 		BuildCommit:  getEnvString("BUILD_COMMIT", "unknown"),
 	}
 
-	// add validate
-	// if err := cfg.validate(); err != nil {
-	// 	return nil, err
-	// }
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 
@@ -149,95 +159,105 @@ func getEnvDuration(key string, fallback time.Duration) time.Duration {
 	return parsed
 }
 
-// func (c *Config) validate() error {
-// 	var problems []string
+func (c *Config) validate() error {
+	var problems []string
 
-// 	if c.ServerPort < 1 || c.ServerPort > 65535 {
-// 		problems = append(problems, fmt.Sprintf("SERVER_PORT must be 1-65535, got %d", c.ServerPort))
-// 	}
-// 	if c.DBHost == "" {
-// 		problems = append(problems, "DB_HOST is required")
-// 	}
-// 	if c.DBUser == "" {
-// 		problems = append(problems, "DB_USER is required")
-// 	}
-// 	if c.DBName == "" {
-// 		problems = append(problems, "DB_NAME is required")
-// 	}
-// 	if c.DBPort < 1 || c.DBPort > 65535 {
-// 		problems = append(problems, fmt.Sprintf("DB_PORT must be 1-65535, got %d", c.DBPort))
-// 	}
+	if c.ServerPort < 1 || c.ServerPort > 65535 {
+		problems = append(problems, fmt.Sprintf("SERVER_PORT must be 1-65535, got %d", c.ServerPort))
+	}
+	if c.AdminPort < 1 || c.AdminPort > 65535 {
+		problems = append(problems, fmt.Sprintf("ADMIN_PORT must be 1-65535, got %d", c.AdminPort))
+	}
+	if c.AdminPort == c.ServerPort {
+		problems = append(problems, fmt.Sprintf("ADMIN_PORT must differ from SERVER_PORT (both %d)", c.ServerPort))
+	}
+	if c.DBHost == "" {
+		problems = append(problems, "DB_HOST is required")
+	}
+	if c.DBUser == "" {
+		problems = append(problems, "DB_USER is required")
+	}
+	if c.DBName == "" {
+		problems = append(problems, "DB_NAME is required")
+	}
+	if c.DBPort < 1 || c.DBPort > 65535 {
+		problems = append(problems, fmt.Sprintf("DB_PORT must be 1-65535, got %d", c.DBPort))
+	}
 
-// 	switch c.DBSSLMode {
-// 	case "disable", "allow", "prefer", "require", "verify-ca", "verify-full":
-// 	default:
-// 		problems = append(problems, fmt.Sprintf("DB_SSLMODE %q is not a valid libpq sslmode", c.DBSSLMode))
-// 	}
+	switch c.DBSSLMode {
+	case "disable", "allow", "prefer", "require", "verify-ca", "verify-full":
+	default:
+		problems = append(problems, fmt.Sprintf("DB_SSLMODE %q is not a valid libpq sslmode", c.DBSSLMode))
+	}
 
-// 	if c.DBMaxConns < 1 {
-// 		problems = append(problems, fmt.Sprintf("DB_MAX_CONNS must be at least 1, got %d", c.DBMaxConns))
-// 	}
-// 	if c.DBMinConns < 0 {
-// 		problems = append(problems, fmt.Sprintf("DB_MIN_CONNS must not be negative, got %d", c.DBMinConns))
-// 	}
-// 	if c.DBMinConns > c.DBMaxConns {
-// 		problems = append(problems, fmt.Sprintf("DB_MIN_CONNS (%d) must not exceed DB_MAX_CONNS (%d)", c.DBMinConns, c.DBMaxConns))
-// 	}
+	if c.DBMaxConns < 1 {
+		problems = append(problems, fmt.Sprintf("DB_MAX_CONNS must be at least 1, got %d", c.DBMaxConns))
+	}
+	if c.DBMinConns < 0 {
+		problems = append(problems, fmt.Sprintf("DB_MIN_CONNS must not be negative, got %d", c.DBMinConns))
+	}
+	if c.DBMinConns > c.DBMaxConns {
+		problems = append(problems, fmt.Sprintf("DB_MIN_CONNS (%d) must not exceed DB_MAX_CONNS (%d)", c.DBMinConns, c.DBMaxConns))
+	}
 
-// 	switch strings.ToLower(c.LogFormat) {
-// 	case "json", "console":
-// 	default:
-// 		problems = append(problems, fmt.Sprintf("LOG_FORMAT %q must be json or console", c.LogFormat))
-// 	}
+	switch strings.ToLower(c.LogFormat) {
+	case "json", "console":
+	default:
+		problems = append(problems, fmt.Sprintf("LOG_FORMAT %q must be json or console", c.LogFormat))
+	}
 
-// 	if len(problems) > 0 {
-// 		return fmt.Errorf("invalid configuration:\n  - %s", strings.Join(problems, "\n  - "))
-// 	}
-// 	return nil
-// }
+	if len(problems) > 0 {
+		return fmt.Errorf("invalid configuration:\n  - %s", strings.Join(problems, "\n  - "))
+	}
 
-// // DSN builds the PostgreSQL connection URL. net/url escapes the credentials, so
-// // an Azure-generated password containing @ or / won't corrupt the string.
-// func (c *Config) DSN() string {
-// 	query := url.Values{}
-// 	query.Set("sslmode", c.DBSSLMode)
-// 	query.Set("application_name", c.ServiceName)
+	return nil
+}
 
-// 	dsn := url.URL{
-// 		Scheme:   "postgres",
-// 		User:     url.UserPassword(c.DBUser, c.DBPass),
-// 		Host:     fmt.Sprintf("%s:%d", c.DBHost, c.DBPort),
-// 		Path:     "/" + c.DBName,
-// 		RawQuery: query.Encode(),
-// 	}
-// 	return dsn.String()
-// }
+func (c *Config) GetPostgreSQLConnectionString() string {
+	query := url.Values{}
+	query.Set("sslmode", c.DBSSLMode)
+	query.Set("application_name", c.ServiceName)
 
-// func (c *Config) Addr() string {
-// 	return fmt.Sprintf("%s:%d", c.ServerHost, c.ServerPort)
-// }
+	dbConnection := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(c.DBUser, c.DBPass),
+		Host:     fmt.Sprintf("%s:%d", c.DBHost, c.DBPort),
+		Path:     "/" + c.DBName,
+		RawQuery: query.Encode(),
+	}
+	return dbConnection.String()
+}
 
-// // Fields returns the effective configuration for startup logging, password omitted.
-// func (c *Config) Fields() map[string]any {
-// 	return map[string]any{
-// 		"addr":                 c.Addr(),
-// 		"read_timeout":         c.ReadTimeout.String(),
-// 		"write_timeout":        c.WriteTimeout.String(),
-// 		"idle_timeout":         c.IdleTimeout.String(),
-// 		"readiness_drain":      c.ReadinessDrain.String(),
-// 		"shutdown_timeout":     c.ShutdownTimeout.String(),
-// 		"db_host":              c.DBHost,
-// 		"db_port":              c.DBPort,
-// 		"db_name":              c.DBName,
-// 		"db_user":              c.DBUser,
-// 		"db_sslmode":           c.DBSSLMode,
-// 		"db_max_conns":         c.DBMaxConns,
-// 		"db_min_conns":         c.DBMinConns,
-// 		"db_max_conn_lifetime": c.DBMaxConnLifetime.String(),
-// 		"db_max_conn_idletime": c.DBMaxConnIdleTime.String(),
-// 		"db_connect_timeout":   c.DBConnectTimeout.String(),
-// 		"run_migrations":       c.RunMigrations,
-// 		"log_level":            c.LogLevel,
-// 		"log_format":           c.LogFormat,
-// 	}
-// }
+func (c *Config) Addr() string {
+	return fmt.Sprintf("%s:%d", c.ServerHost, c.ServerPort)
+}
+
+func (c *Config) AdminAddr() string {
+	return fmt.Sprintf("%s:%d", c.ServerHost, c.AdminPort)
+}
+
+// GetFields returns all the config fields.
+func (c *Config) GetFields() map[string]any {
+	return map[string]any{
+		"addr":                 c.Addr(),
+		"read_timeout":         c.ReadTimeout.String(),
+		"write_timeout":        c.WriteTimeout.String(),
+		"idle_timeout":         c.IdleTimeout.String(),
+		"readiness_drain":      c.ReadinessDrain.String(),
+		"shutdown_timeout":     c.ShutdownTimeout.String(),
+		"db_host":              c.DBHost,
+		"db_port":              c.DBPort,
+		"db_name":              c.DBName,
+		"db_user":              c.DBUser,
+		"db_pass":              c.DBPass,
+		"db_sslmode":           c.DBSSLMode,
+		"db_max_conns":         c.DBMaxConns,
+		"db_min_conns":         c.DBMinConns,
+		"db_max_conn_lifetime": c.DBMaxConnLifetime.String(),
+		"db_max_conn_idletime": c.DBMaxConnIdleTime.String(),
+		"db_connect_timeout":   c.DBConnectTimeout.String(),
+		"run_migrations":       c.RunMigrations,
+		"log_level":            c.LogLevel,
+		"log_format":           c.LogFormat,
+	}
+}

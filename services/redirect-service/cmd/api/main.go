@@ -1,43 +1,62 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"os"
+	"redirect-service/internal/config"
+	"redirect-service/internal/handlers"
 	"redirect-service/internal/server"
 	"redirect-service/pkg/logger"
 	"redirect-service/platform/database"
-	"redirect-service/platform/database/migrations"
 
 	"go.uber.org/zap"
 )
 
 func main() {
-	loadAllConfiguration()
-
-	connectToDatabase()
-
-	server.Start()
-}
-
-func loadAllConfiguration() {
-	server.LoadServerConfig()
-	logger.LoadLoggerConfig()
-}
-
-func connectToDatabase() {
-	databaseConfig := database.NewDatabaseConfig()
-	err := database.Connect(databaseConfig)
-	if err != nil {
-		logger.Log.Error("failed to connect to the Database", zap.Error(err))
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, "redirect-service failed:", err)
 		os.Exit(1)
 	}
-	logger.Log.Info("Connected to the Database")
+}
 
-	err = migrations.ExecuteMigrations()
+func run() error {
+	cfg, err := config.Load("redirect-service")
 	if err != nil {
-		logger.Log.Error("failed to execute migrations",
-			zap.Error(err),
-		)
-		os.Exit(2)
+		return err
 	}
-	logger.Log.Info("Migrations executed")
+
+	if err := logger.Init(logger.Options{
+		Level:   cfg.LogLevel,
+		Format:  cfg.LogFormat,
+		Service: cfg.ServiceName,
+		Version: cfg.BuildVersion,
+		Commit:  cfg.BuildCommit,
+	}); err != nil {
+		return err
+	}
+	defer logger.Sync()
+
+	// Every pod records what it actually loaded, so an anomalous experiment run
+	// can be traced back to its exact configuration.
+	logger.Log.Info("configuration loaded", zap.Any("config", cfg.GetFields()))
+
+	ctx := context.Background()
+
+	if err := database.Connect(ctx, cfg); err != nil {
+		return fmt.Errorf("connecting to database: %w", err)
+	}
+	defer database.Close()
+
+	logger.Log.Info("connected to database")
+
+	health := handlers.NewHealthHandler(database.Ping)
+
+	return server.Run(
+		ctx,
+		cfg,
+		handlers.SetupRouter(),
+		handlers.SetupAdminRouter(health),
+		health.Drain,
+	)
 }
