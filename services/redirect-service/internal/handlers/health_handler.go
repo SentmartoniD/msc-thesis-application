@@ -26,20 +26,14 @@ func NewHealthHandler(ping PingFunc) *HealthHandler {
 	return &HealthHandler{ping: ping}
 }
 
-// Drain marks the service unready, so Kubernetes stops routing traffic here
-// before shutdown begins.
 func (h *HealthHandler) Drain() {
 	h.draining.Store(true)
 }
 
-// Live reports whether the process is running. It deliberately does not touch
-// the database: if it did, saturating the database — the condition the scaling
-// experiments exist to produce — would restart every pod mid-test.
 func (h *HealthHandler) Live(c *gin.Context) {
 	c.String(http.StatusOK, "ok")
 }
 
-// Ready reports whether this pod should receive traffic.
 func (h *HealthHandler) Ready(c *gin.Context) {
 	if h.draining.Load() {
 		c.String(http.StatusServiceUnavailable, "draining")
@@ -52,14 +46,9 @@ func (h *HealthHandler) Ready(c *gin.Context) {
 	switch err := h.ping(ctx); {
 	case err == nil:
 		c.String(http.StatusOK, "ready")
-
 	case errors.Is(err, context.DeadlineExceeded):
-		// A slow database is what the experiments create on purpose. Reporting
-		// unready here would pull every pod from the Service at peak load and
-		// turn a capacity ceiling into a total outage.
 		logger.Log.Warn("readiness ping timed out, reporting ready anyway")
 		c.String(http.StatusOK, "degraded")
-
 	default:
 		logger.Log.Error("readiness ping failed", zap.Error(err))
 		c.String(http.StatusServiceUnavailable, "database unreachable")
