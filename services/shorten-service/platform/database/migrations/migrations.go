@@ -1,34 +1,32 @@
 package migrations
 
 import (
-	"shorten-service/pkg/logger"
-	"shorten-service/platform/database"
+	"embed"
+	"errors"
+	"fmt"
 
-	"go.uber.org/zap"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
-func ExecuteMigrations() (err error) {
-	conf := database.NewDatabaseConfig()
-	err = database.Connect(conf)
+//go:embed sql/*.sql
+var migrationFS embed.FS
+
+// Run applies every pending migration.
+func Run(dsn string) error {
+	src, err := iofs.New(migrationFS, "sql")
 	if err != nil {
-		logger.Log.Error("failed to connect to database",
-			zap.Error(err),
-		)
-		return
+		return fmt.Errorf("loading embedded migrations: %w", err)
 	}
 
-	// AutoMigrate the models
-	if err := database.DB.
-		AutoMigrate(
-		//&models.UserCredentials{},
-		); err != nil {
-		logger.Log.Fatal("failed to auto-migrate",
-			zap.Error(err),
-		)
-		return err
+	migrator, err := migrate.NewWithSourceInstance("iofs", src, dsn)
+	if err != nil {
+		return fmt.Errorf("creating migrator: %w", err)
 	}
+	defer migrator.Close()
 
-	logger.Log.Info("Migration ran successfully")
-
+	if err := migrator.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("applying migrations: %w", err)
+	}
 	return nil
 }

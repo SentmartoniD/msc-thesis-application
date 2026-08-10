@@ -1,46 +1,62 @@
 package database
 
 import (
+	"context"
 	"fmt"
-	"os"
+	"shorten-service/internal/config"
 
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type DatabaseConfig struct {
-	SERVER_PORT string
-	DB_PASS     string
-	DB_USER     string
-	DB_NAME     string
-	DB_HOST     string
-	DB_PORT     string
-}
+var Pool *pgxpool.Pool
 
-func NewDatabaseConfig() *DatabaseConfig {
-	return &DatabaseConfig{
-		SERVER_PORT: os.Getenv("SERVER_PORT"),
-		DB_PASS:     os.Getenv("DB_PASS"),
-		DB_USER:     os.Getenv("DB_USER"),
-		DB_NAME:     os.Getenv("DB_NAME"),
-		DB_HOST:     os.Getenv("DB_HOST"),
-		DB_PORT:     os.Getenv("DB_PORT"),
-	}
-}
-
-var DB *gorm.DB
-
-func Connect(config *DatabaseConfig) (err error) {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC", config.DB_HOST, config.DB_USER, config.DB_PASS, config.DB_NAME, config.DB_PORT)
-
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger:         logger.Default.LogMode(logger.Silent),
-		TranslateError: true,
-	})
+func Connect(ctx context.Context, cfg *config.Config) error {
+	poolCfg, err := pgxpool.ParseConfig(cfg.GetPostgreSQLConnectionString())
 	if err != nil {
-		return err
+		return fmt.Errorf("parsing database DSN: %w", err)
 	}
+
+	poolCfg.MaxConns = cfg.DBMaxConns
+	poolCfg.MinConns = cfg.DBMinConns
+	poolCfg.MaxConnLifetime = cfg.DBMaxConnLifetime
+	poolCfg.MaxConnIdleTime = cfg.DBMaxConnIdleTime
+	poolCfg.ConnConfig.ConnectTimeout = cfg.DBConnectTimeout
+	poolCfg.MaxConnLifetimeJitter = cfg.DBMaxConnLifetime / 10
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
+	if err != nil {
+		return fmt.Errorf("creating connection pool: %w", err)
+	}
+
+	pingCtx, cancel := context.WithTimeout(ctx, cfg.DBConnectTimeout)
+	defer cancel()
+
+	if err := pool.Ping(pingCtx); err != nil {
+		pool.Close()
+		return fmt.Errorf("pinging database: %w", err)
+	}
+
+	Pool = pool
 
 	return nil
+}
+
+func Close() {
+	if Pool != nil {
+		Pool.Close()
+	}
+}
+
+func Ping(ctx context.Context) error {
+	if Pool == nil {
+		return fmt.Errorf("database pool is not initialised")
+	}
+	return Pool.Ping(ctx)
+}
+
+func Stats() *pgxpool.Stat {
+	if Pool == nil {
+		return nil
+	}
+	return Pool.Stat()
 }

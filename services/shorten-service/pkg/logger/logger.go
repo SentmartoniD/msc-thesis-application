@@ -1,7 +1,8 @@
 package logger
 
 import (
-	"os"
+	"fmt"
+	"strings"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -11,59 +12,67 @@ var (
 	Log *zap.Logger
 )
 
-func LoadLoggerConfig() {
-	Log, _ = Setup()
-
-	defer Log.Sync()
+type Options struct {
+	Level   string
+	Format  string
+	Service string
+	Version string
+	Commit  string
 }
 
-// configure will return instance of zap logger configuration, configured to be verbose or to use JSON formatting
-func Setup() (logger *zap.Logger, err error) {
-	verbose := os.Getenv("VERBOSE")
-
-	debugLevel := zapcore.InfoLevel
-	switch verbose {
-	case "debug":
-		debugLevel = zapcore.DebugLevel
-	case "info":
-		debugLevel = zapcore.InfoLevel
-	case "warn":
-		debugLevel = zapcore.WarnLevel
-	case "error":
-		debugLevel = zapcore.ErrorLevel
-	default:
-		debugLevel = zapcore.InfoLevel
+func Init(opts Options) error {
+	level, err := zapcore.ParseLevel(strings.ToLower(opts.Level))
+	if err != nil {
+		return fmt.Errorf("invalid LOG_LEVEL %q: %w", opts.Level, err)
 	}
 
-	config := zap.Config{
-		Level:             zap.NewAtomicLevelAt(debugLevel),
-		Development:       false,
-		DisableCaller:     false,
-		DisableStacktrace: false,
-		Sampling:          nil,
-		Encoding:          "console",
-		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey:     "message",
-			LevelKey:       "level",
-			TimeKey:        "time",
-			NameKey:        "logger",
-			CallerKey:      "go",
-			StacktraceKey:  "trace",
-			LineEnding:     "\n",
-			EncodeLevel:    zapcore.CapitalColorLevelEncoder,
-			EncodeTime:     zapcore.ISO8601TimeEncoder,
-			EncodeDuration: zapcore.StringDurationEncoder,
-			EncodeCaller: func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
-				callerName := caller.TrimmedPath()
-				//callerName = filters.MinWidth(callerName, " ", 20)
-				enc.AppendString(callerName)
-			},
-			EncodeName: zapcore.FullNameEncoder,
-		},
+	encoderCfg := zapcore.EncoderConfig{
+		MessageKey:     "message",
+		LevelKey:       "level",
+		TimeKey:        "time",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		StacktraceKey:  "stacktrace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeTime:     zapcore.ISO8601TimeEncoder,
+		EncodeDuration: zapcore.StringDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+	}
+
+	encoding := "json"
+	if strings.EqualFold(opts.Format, "console") {
+		encoding = "console"
+		encoderCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	}
+
+	zapCfg := zap.Config{
+		Level:            zap.NewAtomicLevelAt(level),
+		Development:      false,
+		Sampling:         nil,
+		Encoding:         encoding,
+		EncoderConfig:    encoderCfg,
 		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: nil,
-		InitialFields:    nil,
+		ErrorOutputPaths: []string{"stderr"},
+		InitialFields: map[string]any{
+			"service": opts.Service,
+			"version": opts.Version,
+			"commit":  opts.Commit,
+		},
 	}
 
-	return config.Build()
+	logger, err := zapCfg.Build()
+	if err != nil {
+		return fmt.Errorf("building logger: %w", err)
+	}
+
+	Log = logger
+
+	return nil
+}
+
+func Sync() {
+	if Log != nil {
+		_ = Log.Sync()
+	}
 }

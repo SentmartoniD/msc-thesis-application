@@ -16,7 +16,6 @@ import (
 )
 
 // Run starts the public and admin servers and blocks until a termination
-// signal arrives or either server fails.
 func Run(ctx context.Context, cfg *config.Config, public, admin http.Handler, drain func()) error {
 	publicSrv := New(cfg, public)
 	adminSrv := NewAdmin(cfg, admin)
