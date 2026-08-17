@@ -12,6 +12,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var (
+	ErrorCodeUsed     = errors.New("code already used")
+	ErrorLinkNotFound = errors.New("link not found")
+)
+
 type LinkRepository struct {
 	pool *pgxpool.Pool
 }
@@ -19,11 +24,6 @@ type LinkRepository struct {
 func NewLinkRepository(pool *pgxpool.Pool) *LinkRepository {
 	return &LinkRepository{pool: pool}
 }
-
-var (
-	ErrorCodeUsed     = errors.New("code already used")
-	ErrorLinkNotFound = errors.New("link not found")
-)
 
 // Create inserts a new row into the links table.
 func (r *LinkRepository) Create(ctx context.Context, code string, targetURL string, expiresAt *time.Time) (*models.Link, error) {
