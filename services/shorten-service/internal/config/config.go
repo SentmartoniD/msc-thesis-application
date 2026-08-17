@@ -26,6 +26,9 @@ type Config struct {
 	AdminPort         int
 	AdminWriteTimeout time.Duration
 
+	// Base redirect link
+	ShortBaseURL string
+
 	// Shutdown
 	ReadinessDrain  time.Duration
 	ShutdownTimeout time.Duration
@@ -69,6 +72,8 @@ func Load(serviceName string) (*Config, error) {
 
 		AdminPort:         getEnvInt("ADMIN_PORT", 9090),
 		AdminWriteTimeout: getEnvDuration("ADMIN_WRITE_TIMEOUT", 10*time.Second),
+
+		ShortBaseURL: getEnvString("SHORT_BASE_URL", "http://localhost:8000"),
 
 		ReadinessDrain:  getEnvDuration("SHUTDOWN_READINESS_DRAIN", 5*time.Second),
 		ShutdownTimeout: getEnvDuration("SHUTDOWN_TIMEOUT", 15*time.Second),
@@ -171,6 +176,12 @@ func (c *Config) validate() error {
 	if c.AdminPort == c.ServerPort {
 		problems = append(problems, fmt.Sprintf("ADMIN_PORT must differ from SERVER_PORT (both %d)", c.ServerPort))
 	}
+	if c.ShortBaseURL == "" {
+		problems = append(problems, "SHORT_BASE_URL is required")
+	} else if u, err := url.Parse(c.ShortBaseURL); err != nil || u.Scheme == "" || u.Host == "" {
+		problems = append(problems, fmt.Sprintf(
+			"SHORT_BASE_URL %q must be an absolute URL, e.g. https://sh.rt", c.ShortBaseURL))
+	}
 	if c.DBHost == "" {
 		problems = append(problems, "DB_HOST is required")
 	}
@@ -252,6 +263,7 @@ func (c *Config) GetFields() map[string]any {
 		"idle_timeout":         c.IdleTimeout.String(),
 		"readiness_drain":      c.ReadinessDrain.String(),
 		"shutdown_timeout":     c.ShutdownTimeout.String(),
+		"short_base_url":       c.ShortBaseURL,
 		"db_host":              c.DBHost,
 		"db_port":              c.DBPort,
 		"db_name":              c.DBName,
@@ -268,3 +280,7 @@ func (c *Config) GetFields() map[string]any {
 		"log_format":           c.LogFormat,
 	}
 }
+
+// func (c *Config) ShortURL(code string) string {
+// 	return strings.TrimSuffix(c.ShortBaseURL, "/") + "/" + code
+// }

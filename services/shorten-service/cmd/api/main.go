@@ -55,7 +55,7 @@ func run() error {
 	return server.Run(
 		ctx,
 		cfg,
-		handlers.SetupRouter(),
+		handlers.SetupRouter(cfg),
 		handlers.SetupAdminRouter(health),
 		health.Drain,
 	)
