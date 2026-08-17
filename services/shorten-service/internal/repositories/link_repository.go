@@ -30,12 +30,12 @@ func (r *LinkRepository) Create(ctx context.Context, code string, targetURL stri
 
 	var link models.Link
 
-	const insertLink = `
+	const insertLinkQuery = `
 		INSERT INTO links (code, target_url, expires_at)
 		VALUES ($1, $2, $3)
 		RETURNING id, code, target_url, expires_at, is_active, created_at`
 
-	err := r.pool.QueryRow(ctx, insertLink, code, targetURL, expiresAt).Scan(
+	err := r.pool.QueryRow(ctx, insertLinkQuery, code, targetURL, expiresAt).Scan(
 		&link.ID,
 		&link.Code,
 		&link.TargetURL,
