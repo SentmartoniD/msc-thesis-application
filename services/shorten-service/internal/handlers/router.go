@@ -21,7 +21,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	apiRouter := router.Group("api/v1")
 
 	// link router
-	linkRouter := apiRouter.Group("link")
+	linkRouter := apiRouter.Group("links")
 	linkRouter.POST("", linkHandler.CreateLinkHandler)
 	linkRouter.GET(":code", linkHandler.GetLinkHandler)
 
