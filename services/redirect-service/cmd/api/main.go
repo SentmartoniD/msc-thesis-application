@@ -6,6 +6,7 @@ import (
 	"os"
 	"redirect-service/internal/config"
 	"redirect-service/internal/handlers"
+	"redirect-service/internal/publishers"
 	"redirect-service/internal/server"
 	"redirect-service/pkg/logger"
 	"redirect-service/platform/database"
@@ -50,12 +51,27 @@ func run() error {
 
 	logger.Log.Info("connected to database")
 
+	var clickPublisher handlers.ClickPublisher = publishers.Noop{}
+
+	if cfg.ClickMode == "async" {
+		p := publishers.New(publishers.Config{
+			URL:        cfg.RabbitMQURL,
+			Exchange:   cfg.RabbitMQExchange,
+			RoutingKey: cfg.RabbitMQRoutingKey,
+			BufferSize: cfg.ClickBufferSize,
+		})
+		p.Start()
+		defer p.Close()
+
+		clickPublisher = p
+	}
+
 	health := handlers.NewHealthHandler(database.Ping)
 
 	return server.Run(
 		ctx,
 		cfg,
-		handlers.SetupRouter(),
+		handlers.SetupRouter(clickPublisher),
 		handlers.SetupAdminRouter(health),
 		health.Drain,
 	)

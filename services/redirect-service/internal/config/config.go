@@ -44,6 +44,14 @@ type Config struct {
 	DBMaxConnIdleTime time.Duration
 	DBConnectTimeout  time.Duration
 
+	// RabbitMQ
+	// off | async | sync
+	ClickMode          string
+	RabbitMQURL        string
+	RabbitMQExchange   string
+	RabbitMQRoutingKey string
+	ClickBufferSize    int
+
 	// Migrations default is false
 	RunMigrations bool
 
@@ -85,6 +93,12 @@ func Load(serviceName string) (*Config, error) {
 		DBMaxConnLifetime: getEnvDuration("DB_MAX_CONN_LIFETIME", 30*time.Minute),
 		DBMaxConnIdleTime: getEnvDuration("DB_MAX_CONN_IDLE_TIME", 5*time.Minute),
 		DBConnectTimeout:  getEnvDuration("DB_CONNECT_TIMEOUT", 5*time.Second),
+
+		ClickMode:          getEnvString("CLICK_MODE", "off"),
+		RabbitMQURL:        getEnvString("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		RabbitMQExchange:   getEnvString("RABBITMQ_EXCHANGE", "clicks"),
+		RabbitMQRoutingKey: getEnvString("RABBITMQ_ROUTING_KEY", "click.recorded"),
+		ClickBufferSize:    getEnvInt("CLICK_BUFFER_SIZE", 4096),
 
 		RunMigrations: getEnvBool("RUN_MIGRATIONS", false),
 
@@ -198,6 +212,18 @@ func (c *Config) validate() error {
 	}
 	if c.DBMinConns > c.DBMaxConns {
 		problems = append(problems, fmt.Sprintf("DB_MIN_CONNS (%d) must not exceed DB_MAX_CONNS (%d)", c.DBMinConns, c.DBMaxConns))
+	}
+
+	switch c.ClickMode {
+	case "off", "async", "sync":
+	default:
+		problems = append(problems, fmt.Sprintf("CLICK_MODE %q must be off, async or sync", c.ClickMode))
+	}
+	if c.ClickMode == "async" && c.RabbitMQURL == "" {
+		problems = append(problems, "RABBITMQ_URL is required when CLICK_MODE=async")
+	}
+	if c.ClickBufferSize < 1 {
+		problems = append(problems, fmt.Sprintf("CLICK_BUFFER_SIZE must be at least 1, got %d", c.ClickBufferSize))
 	}
 
 	switch strings.ToLower(c.LogFormat) {

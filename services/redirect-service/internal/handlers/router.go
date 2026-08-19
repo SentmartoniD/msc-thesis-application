@@ -1,18 +1,24 @@
 package handlers
 
 import (
+	"redirect-service/internal/repositories"
 	"redirect-service/internal/server/middlewares"
+	"redirect-service/internal/services"
+	"redirect-service/platform/database"
 
 	"github.com/gin-gonic/gin"
 )
 
 // SetupRouter builds the public engine: the redirect hot path and nothing else.
-func SetupRouter() *gin.Engine {
+func SetupRouter(publisher ClickPublisher) *gin.Engine {
 	router := newEngine()
 
-	// Phase 1 — the measured endpoint:
-	// rh := NewRedirectHandler(links.NewRepository(database.Pool))
-	// router.GET("/:code", rh.Redirect)
+	linkRepository := repositories.NewLinkRepository(database.Pool)
+	linkService := services.NewLinkService(linkRepository)
+	redirectHandler := NewRedirectHandler(linkService, publisher)
+
+	// redirect router
+	router.GET("/:code", redirectHandler.Redirect)
 
 	return router
 }
