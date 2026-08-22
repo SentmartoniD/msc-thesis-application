@@ -2,8 +2,11 @@ package main
 
 import (
 	"analytics-service/internal/config"
+	"analytics-service/internal/consumers"
 	"analytics-service/internal/handlers"
+	"analytics-service/internal/repositories"
 	"analytics-service/internal/server"
+	"analytics-service/internal/services"
 	"analytics-service/pkg/logger"
 	"analytics-service/platform/database"
 	"context"
@@ -50,12 +53,28 @@ func run() error {
 
 	logger.Log.Info("connected to database")
 
+	clickRepository := repositories.NewClickRepository(database.Pool)
+	clickService := services.NewClickService(clickRepository)
+
+	clickConsumer := consumers.New(consumers.Config{
+		URL:           cfg.RabbitMQURL,
+		Exchange:      cfg.RabbitMQExchange,
+		Queue:         cfg.RabbitMQQueue,
+		RoutingKey:    cfg.RabbitMQRoutingKey,
+		Prefetch:      cfg.ConsumerPrefetch,
+		BatchSize:     cfg.BatchSize,
+		FlushInterval: cfg.FlushInterval,
+	}, clickService)
+
+	clickConsumer.Start()
+	defer clickConsumer.Close()
+
 	health := handlers.NewHealthHandler(database.Ping)
 
 	return server.Run(
 		ctx,
 		cfg,
-		handlers.SetupRouter(),
+		handlers.SetupRouter(clickService),
 		handlers.SetupAdminRouter(health),
 		health.Drain,
 	)

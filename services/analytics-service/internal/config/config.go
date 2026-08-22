@@ -44,6 +44,15 @@ type Config struct {
 	DBMaxConnIdleTime time.Duration
 	DBConnectTimeout  time.Duration
 
+	// RabbitMQ
+	RabbitMQURL        string
+	RabbitMQExchange   string
+	RabbitMQQueue      string
+	RabbitMQRoutingKey string
+	ConsumerPrefetch   int
+	BatchSize          int
+	FlushInterval      time.Duration
+
 	// Migrations default is false
 	RunMigrations bool
 
@@ -85,6 +94,14 @@ func Load(serviceName string) (*Config, error) {
 		DBMaxConnLifetime: getEnvDuration("DB_MAX_CONN_LIFETIME", 30*time.Minute),
 		DBMaxConnIdleTime: getEnvDuration("DB_MAX_CONN_IDLE_TIME", 5*time.Minute),
 		DBConnectTimeout:  getEnvDuration("DB_CONNECT_TIMEOUT", 5*time.Second),
+
+		RabbitMQURL:        getEnvString("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		RabbitMQExchange:   getEnvString("RABBITMQ_EXCHANGE", "clicks"),
+		RabbitMQQueue:      getEnvString("RABBITMQ_QUEUE", "clicks.analytics"),
+		RabbitMQRoutingKey: getEnvString("RABBITMQ_ROUTING_KEY", "click.recorded"),
+		ConsumerPrefetch:   getEnvInt("CONSUMER_PREFETCH", 1000),
+		BatchSize:          getEnvInt("BATCH_SIZE", 500),
+		FlushInterval:      getEnvDuration("FLUSH_INTERVAL", 1*time.Second),
 
 		RunMigrations: getEnvBool("RUN_MIGRATIONS", false),
 

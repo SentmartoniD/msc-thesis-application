@@ -7,12 +7,16 @@ import (
 )
 
 // SetupRouter builds the public engine: the redirect hot path and nothing else.
-func SetupRouter() *gin.Engine {
+func SetupRouter(clickService ClickService) *gin.Engine {
 	router := newEngine()
 
-	// Phase 1 — the measured endpoint:
-	// rh := NewRedirectHandler(links.NewRepository(database.Pool))
-	// router.GET("/:code", rh.Redirect)
+	analyticsHandler := NewAnalyticsHandler(clickService)
+
+	apiRouter := router.Group("api/v1")
+
+	// analytics router
+	analyticsRouter := apiRouter.Group("analytics")
+	analyticsRouter.GET(":code", analyticsHandler.GetCodeAnalyticsHandler)
 
 	return router
 }
