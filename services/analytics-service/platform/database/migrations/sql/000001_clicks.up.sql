@@ -5,3 +5,5 @@ CREATE TABLE IF NOT EXISTS clicks (
     referrer    TEXT,
     user_agent  TEXT
 );
+
+CREATE INDEX IF NOT EXISTS clicks_code_time_idx ON clicks (code, occurred_at DESC);
