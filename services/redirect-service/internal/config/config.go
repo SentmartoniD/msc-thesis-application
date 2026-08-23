@@ -45,7 +45,7 @@ type Config struct {
 	DBConnectTimeout  time.Duration
 
 	// RabbitMQ
-	// off | async | sync
+	// off | async
 	ClickMode          string
 	RabbitMQURL        string
 	RabbitMQExchange   string

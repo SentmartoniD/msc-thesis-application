@@ -53,6 +53,7 @@ func run() error {
 
 	var clickPublisher handlers.ClickPublisher = publishers.Noop{}
 
+	// use RabbitMQ
 	if cfg.ClickMode == "async" {
 		p := publishers.New(publishers.Config{
 			URL:        cfg.RabbitMQURL,
@@ -64,6 +65,12 @@ func run() error {
 		defer p.Close()
 
 		clickPublisher = p
+
+		logger.Log.Info("click publishing enabled", zap.String("exchange", cfg.RabbitMQExchange))
+	}
+	// don't use RabbitMQ
+	if cfg.ClickMode == "off" {
+		logger.Log.Info("click publishing disabled")
 	}
 
 	health := handlers.NewHealthHandler(database.Ping)
