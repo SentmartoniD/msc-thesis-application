@@ -14,7 +14,7 @@ import (
 
 const (
 	codeLength      = 7
-	maxCodeAttempts = 100
+	MaxCodeAttempts = 100
 )
 
 var (
@@ -48,7 +48,7 @@ func (s *LinkService) CreateLink(ctx context.Context, req models.CreateLinkReque
 
 	// the generated code could already be used
 	// so generate in a loop until it succeeds
-	for attempt := 0; attempt < maxCodeAttempts; attempt++ {
+	for attempt := 0; attempt < MaxCodeAttempts; attempt++ {
 		code, err := generateCode(codeLength)
 		if err != nil {
 			return nil, fmt.Errorf("failed generating code: %w", err)

@@ -41,6 +41,7 @@ func (h *LinkHandler) CreateLinkHandler(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		} else if errors.Is(err, services.ErrorCodeExhausted) {
+			logger.Log.Error("code allocation exhausted", zap.Int("attempts", services.MaxCodeAttempts))
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
 			return
 		}
