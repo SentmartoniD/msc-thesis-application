@@ -37,6 +37,7 @@ func newEngine() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
+	// if panic happens return 500
 	router.Use(middlewares.Recovery())
 
 	return router

@@ -49,6 +49,7 @@ func Run(ctx context.Context, cfg *config.Config, public, admin http.Handler, dr
 		}
 	}()
 
+	// if process stoped shutdwon gracefully the servers
 	signalCtx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 

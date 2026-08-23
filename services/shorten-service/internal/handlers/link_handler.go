@@ -30,7 +30,8 @@ func (h *LinkHandler) CreateLinkHandler(c *gin.Context) {
 	var req models.CreateLinkRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		logger.Log.Debug("invalid create link request", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": `request body must contain a valid "url" field`})
 		return
 	}
 

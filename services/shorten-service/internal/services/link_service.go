@@ -73,6 +73,9 @@ func (s *LinkService) CreateLink(ctx context.Context, req models.CreateLinkReque
 func (s *LinkService) GetLink(ctx context.Context, code string) (*models.LinkResponse, error) {
 	link, err := s.repository.GetByCode(ctx, code)
 	if err != nil {
+		if errors.Is(err, repositories.ErrorLinkNotFound) {
+			return nil, ErrorLinkNotFound
+		}
 		return nil, err
 	}
 
