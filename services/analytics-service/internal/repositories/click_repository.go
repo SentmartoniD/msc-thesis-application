@@ -24,7 +24,7 @@ func (r *ClickRepository) InsertBatch(ctx context.Context, clicks []models.Click
 	}
 
 	const insertClick = `
-		INSERT INTO click_events (code, occurred_at, referrer, user_agent)
+		INSERT INTO clicks (code, occurred_at, referrer, user_agent)
 		VALUES ($1, $2, $3, $4)`
 
 	batch := &pgx.Batch{}
@@ -48,7 +48,7 @@ func (r *ClickRepository) GetCodeAnalytics(ctx context.Context, code string) (*m
 		count(*),
 		count(*) FILTER (WHERE occurred_at > now() - interval '24 hours'),
 		max(occurred_at)
-	FROM click_events
+	FROM clicks
 	WHERE code = $1`
 
 	err := r.pool.QueryRow(ctx, statsByCode, code).Scan(
