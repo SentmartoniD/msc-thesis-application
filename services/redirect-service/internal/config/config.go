@@ -52,9 +52,6 @@ type Config struct {
 	RabbitMQRoutingKey string
 	ClickBufferSize    int
 
-	// Migrations default is false
-	RunMigrations bool
-
 	// Logging
 	LogLevel  string
 	LogFormat string
@@ -64,6 +61,7 @@ type Config struct {
 	BuildCommit  string
 }
 
+// Load loads values into config.
 func Load(serviceName string) (*Config, error) {
 	cfg := &Config{
 		ServiceName: serviceName,
@@ -99,8 +97,6 @@ func Load(serviceName string) (*Config, error) {
 		RabbitMQExchange:   getEnvString("RABBITMQ_EXCHANGE", "clicks"),
 		RabbitMQRoutingKey: getEnvString("RABBITMQ_ROUTING_KEY", "click.recorded"),
 		ClickBufferSize:    getEnvInt("CLICK_BUFFER_SIZE", 4096),
-
-		RunMigrations: getEnvBool("RUN_MIGRATIONS", false),
 
 		// debug/info/warn/error/fatal
 		LogLevel: getEnvString("LOG_LEVEL", "info"),
@@ -173,6 +169,7 @@ func getEnvDuration(key string, fallback time.Duration) time.Duration {
 	return parsed
 }
 
+// validate validates all config values.
 func (c *Config) validate() error {
 	var problems []string
 
@@ -275,14 +272,12 @@ func (c *Config) GetFields() map[string]any {
 		"db_port":              c.DBPort,
 		"db_name":              c.DBName,
 		"db_user":              c.DBUser,
-		"db_pass":              c.DBPass,
 		"db_sslmode":           c.DBSSLMode,
 		"db_max_conns":         c.DBMaxConns,
 		"db_min_conns":         c.DBMinConns,
 		"db_max_conn_lifetime": c.DBMaxConnLifetime.String(),
 		"db_max_conn_idletime": c.DBMaxConnIdleTime.String(),
 		"db_connect_timeout":   c.DBConnectTimeout.String(),
-		"run_migrations":       c.RunMigrations,
 		"log_level":            c.LogLevel,
 		"log_format":           c.LogFormat,
 	}

@@ -47,9 +47,6 @@ type Config struct {
 	DBMaxConnIdleTime time.Duration
 	DBConnectTimeout  time.Duration
 
-	// Migrations default is false
-	RunMigrations bool
-
 	// Logging
 	LogLevel  string
 	LogFormat string
@@ -90,8 +87,6 @@ func Load(serviceName string) (*Config, error) {
 		DBMaxConnLifetime: getEnvDuration("DB_MAX_CONN_LIFETIME", 30*time.Minute),
 		DBMaxConnIdleTime: getEnvDuration("DB_MAX_CONN_IDLE_TIME", 5*time.Minute),
 		DBConnectTimeout:  getEnvDuration("DB_CONNECT_TIMEOUT", 5*time.Second),
-
-		RunMigrations: getEnvBool("RUN_MIGRATIONS", false),
 
 		// debug/info/warn/error/fatal
 		LogLevel: getEnvString("LOG_LEVEL", "info"),
@@ -268,14 +263,12 @@ func (c *Config) GetFields() map[string]any {
 		"db_port":              c.DBPort,
 		"db_name":              c.DBName,
 		"db_user":              c.DBUser,
-		"db_pass":              c.DBPass,
 		"db_sslmode":           c.DBSSLMode,
 		"db_max_conns":         c.DBMaxConns,
 		"db_min_conns":         c.DBMinConns,
 		"db_max_conn_lifetime": c.DBMaxConnLifetime.String(),
 		"db_max_conn_idletime": c.DBMaxConnIdleTime.String(),
 		"db_connect_timeout":   c.DBConnectTimeout.String(),
-		"run_migrations":       c.RunMigrations,
 		"log_level":            c.LogLevel,
 		"log_format":           c.LogFormat,
 	}

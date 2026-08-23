@@ -53,9 +53,6 @@ type Config struct {
 	BatchSize          int
 	FlushInterval      time.Duration
 
-	// Migrations default is false
-	RunMigrations bool
-
 	// Logging
 	LogLevel  string
 	LogFormat string
@@ -102,8 +99,6 @@ func Load(serviceName string) (*Config, error) {
 		ConsumerPrefetch:   getEnvInt("CONSUMER_PREFETCH", 1000),
 		BatchSize:          getEnvInt("BATCH_SIZE", 500),
 		FlushInterval:      getEnvDuration("FLUSH_INTERVAL", 1*time.Second),
-
-		RunMigrations: getEnvBool("RUN_MIGRATIONS", false),
 
 		// debug/info/warn/error/fatal
 		LogLevel: getEnvString("LOG_LEVEL", "info"),
@@ -273,14 +268,12 @@ func (c *Config) GetFields() map[string]any {
 		"db_port":              c.DBPort,
 		"db_name":              c.DBName,
 		"db_user":              c.DBUser,
-		"db_pass":              c.DBPass,
 		"db_sslmode":           c.DBSSLMode,
 		"db_max_conns":         c.DBMaxConns,
 		"db_min_conns":         c.DBMinConns,
 		"db_max_conn_lifetime": c.DBMaxConnLifetime.String(),
 		"db_max_conn_idletime": c.DBMaxConnIdleTime.String(),
 		"db_connect_timeout":   c.DBConnectTimeout.String(),
-		"run_migrations":       c.RunMigrations,
 		"log_level":            c.LogLevel,
 		"log_format":           c.LogFormat,
 	}
