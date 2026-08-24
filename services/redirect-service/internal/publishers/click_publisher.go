@@ -28,6 +28,7 @@ type Config struct {
 	BufferSize int
 }
 
+// for click mode off
 type Noop struct{}
 
 func (Noop) Publish(models.ClickEvent) {}
@@ -39,7 +40,6 @@ type ClickPublisher struct {
 	wg      sync.WaitGroup
 	dropped atomic.Int64
 
-	// Touched only by the run goroutine, so they need no locking.
 	connection *amqp.Connection
 	channel    *amqp.Channel
 	nextRetry  time.Time
