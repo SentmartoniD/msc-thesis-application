@@ -6,6 +6,7 @@ import (
 	"os"
 	"redirect-service/internal/config"
 	"redirect-service/internal/handlers"
+	"redirect-service/internal/metrics"
 	"redirect-service/internal/publishers"
 	"redirect-service/internal/server"
 	"redirect-service/pkg/logger"
@@ -50,6 +51,8 @@ func run() error {
 	defer database.Close()
 
 	logger.Log.Info("connected to database")
+
+	metrics.RegisterPoolMetrics()
 
 	var clickPublisher handlers.ClickPublisher = publishers.Noop{}
 

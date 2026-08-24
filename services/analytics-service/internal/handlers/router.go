@@ -4,6 +4,7 @@ import (
 	"analytics-service/internal/server/middlewares"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // SetupRouter builds the public engine: the redirect hot path and nothing else.
@@ -26,6 +27,8 @@ func SetupAdminRouter(hh *HealthHandler) *gin.Engine {
 
 	router.GET("/healthz", hh.Live)
 	router.GET("/readyz", hh.Ready)
+
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	return router
 }

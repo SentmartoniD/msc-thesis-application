@@ -6,6 +6,7 @@ import (
 	"os"
 	"shorten-service/internal/config"
 	"shorten-service/internal/handlers"
+	"shorten-service/internal/metrics"
 	"shorten-service/internal/server"
 	"shorten-service/pkg/logger"
 	"shorten-service/platform/database"
@@ -49,6 +50,8 @@ func run() error {
 	defer database.Close()
 
 	logger.Log.Info("connected to database")
+
+	metrics.RegisterPoolMetrics()
 
 	health := handlers.NewHealthHandler(database.Ping)
 

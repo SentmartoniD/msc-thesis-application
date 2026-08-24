@@ -1,17 +1,20 @@
 package handlers
 
 import (
+	"redirect-service/internal/metrics"
 	"redirect-service/internal/repositories"
 	"redirect-service/internal/server/middlewares"
 	"redirect-service/internal/services"
 	"redirect-service/platform/database"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // SetupRouter builds the public engine: the redirect hot path and nothing else.
 func SetupRouter(publisher ClickPublisher) *gin.Engine {
 	router := newEngine()
+	router.Use(metrics.Instrument())
 
 	linkRepository := repositories.NewLinkRepository(database.Pool)
 	linkService := services.NewLinkService(linkRepository)
@@ -28,6 +31,8 @@ func SetupAdminRouter(hh *HealthHandler) *gin.Engine {
 
 	router.GET("/healthz", hh.Live)
 	router.GET("/readyz", hh.Ready)
+
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	return router
 }

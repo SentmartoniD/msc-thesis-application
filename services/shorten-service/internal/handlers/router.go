@@ -8,6 +8,7 @@ import (
 	"shorten-service/platform/database"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // SetupRouter builds the public gin api engine.
@@ -33,6 +34,8 @@ func SetupAdminRouter(hh *HealthHandler) *gin.Engine {
 
 	router.GET("/healthz", hh.Live)
 	router.GET("/readyz", hh.Ready)
+
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	return router
 }

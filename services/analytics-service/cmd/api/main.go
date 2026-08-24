@@ -4,6 +4,7 @@ import (
 	"analytics-service/internal/config"
 	"analytics-service/internal/consumers"
 	"analytics-service/internal/handlers"
+	"analytics-service/internal/metrics"
 	"analytics-service/internal/repositories"
 	"analytics-service/internal/server"
 	"analytics-service/internal/services"
@@ -52,6 +53,8 @@ func run() error {
 	defer database.Close()
 
 	logger.Log.Info("connected to database")
+
+	metrics.RegisterPoolMetrics()
 
 	clickRepository := repositories.NewClickRepository(database.Pool)
 	clickService := services.NewClickService(clickRepository)
