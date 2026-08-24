@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"shorten-service/internal/config"
+	"shorten-service/internal/metrics"
 	"shorten-service/internal/repositories"
 	"shorten-service/internal/server/middlewares"
 	"shorten-service/internal/services"
@@ -14,6 +15,7 @@ import (
 // SetupRouter builds the public gin api engine.
 func SetupRouter(cfg *config.Config) *gin.Engine {
 	router := newEngine()
+	router.Use(metrics.Instrument())
 
 	linkRepository := repositories.NewLinkRepository(database.Pool)
 	linkService := services.NewLinkService(linkRepository, cfg)

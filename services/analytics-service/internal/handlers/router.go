@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"analytics-service/internal/metrics"
 	"analytics-service/internal/server/middlewares"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,7 @@ import (
 // SetupRouter builds the public engine: the redirect hot path and nothing else.
 func SetupRouter(clickService ClickService) *gin.Engine {
 	router := newEngine()
+	router.Use(metrics.Instrument())
 
 	analyticsHandler := NewAnalyticsHandler(clickService)
 
