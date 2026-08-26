@@ -14,14 +14,30 @@ import (
 var (
 	RequestsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "http_requests_total",
-		Help: "Redirect service requests by HTTP status.",
+		Help: "HTTP requests count by statuss.",
 	}, []string{"status"})
 
-	// Default buckets start at 5ms, far too coarse for a redirect.
 	RequestDuration = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "http_request_duration_seconds",
-		Help:    "Redirect handler latency.",
+		Help:    "Handler latency.",
 		Buckets: []float64{0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1},
+	})
+
+	// Saturation
+	InFlight = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "http_requests_in_flight",
+		Help: "Requests currently being processed.",
+	})
+
+	DBQueriesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "db_queries_total",
+		Help: "Database queries by outcome.",
+	}, []string{"outcome"})
+
+	DBQueryDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "db_query_duration_seconds",
+		Help:    "Time spent executing a database query.",
+		Buckets: []float64{0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1},
 	})
 )
 
@@ -29,6 +45,9 @@ var (
 // so probes and scrapes never appear in the numbers.
 func Instrument() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		InFlight.Inc()
+		defer InFlight.Dec()
+
 		start := time.Now()
 		c.Next()
 		RequestDuration.Observe(time.Since(start).Seconds())

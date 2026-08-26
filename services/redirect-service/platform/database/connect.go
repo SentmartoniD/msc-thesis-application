@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"redirect-service/internal/config"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var Pool *pgxpool.Pool
 
-func Connect(ctx context.Context, cfg *config.Config) error {
+func Connect(ctx context.Context, cfg *config.Config, tracer pgx.QueryTracer) error {
 	poolCfg, err := pgxpool.ParseConfig(cfg.GetPostgreSQLConnectionString())
 	if err != nil {
 		return fmt.Errorf("parsing database DSN: %w", err)
@@ -22,6 +23,8 @@ func Connect(ctx context.Context, cfg *config.Config) error {
 	poolCfg.MaxConnIdleTime = cfg.DBMaxConnIdleTime
 	poolCfg.ConnConfig.ConnectTimeout = cfg.DBConnectTimeout
 	poolCfg.MaxConnLifetimeJitter = cfg.DBMaxConnLifetime / 10
+
+	poolCfg.ConnConfig.Tracer = tracer
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {

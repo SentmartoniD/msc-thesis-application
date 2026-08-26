@@ -44,7 +44,7 @@ func run() error {
 
 	ctx := context.Background()
 
-	if err := database.Connect(ctx, cfg); err != nil {
+	if err := database.Connect(ctx, cfg, metrics.QueryTracer{}); err != nil {
 		return fmt.Errorf("connecting to database: %w", err)
 	}
 	defer database.Close()
