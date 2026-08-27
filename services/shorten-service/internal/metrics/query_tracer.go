@@ -8,6 +8,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// in pgx
+// type QueryTracer interface {
+// 	TraceQueryStart(ctx context.Context, conn *Conn, data TraceQueryStartData) context.Context
+// 	TraceQueryEnd(ctx context.Context, conn *Conn, data TraceQueryEndData)
+// }
+
 // queryStartKey carries the start time from TraceQueryStart to TraceQueryEnd.
 type queryStartKey struct{}
 

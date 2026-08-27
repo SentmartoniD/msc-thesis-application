@@ -30,6 +30,7 @@ var (
 		Help: "Requests currently being processed.",
 	})
 
+	// []string{"outcome"}: ok/no_rows/error
 	DBQueriesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "db_queries_total",
 		Help: "Database queries by outcome.",
