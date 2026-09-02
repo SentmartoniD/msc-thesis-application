@@ -106,9 +106,6 @@ func generateCode(length int) (string, error) {
 
 	codeAlphabet := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-	// 256 is not a multiple of 62, so the first 8 letters of the alphabet are
-	// very slightly more likely. Irrelevant at this scale — it does not
-	// meaningfully affect collision probability.
 	for i, b := range buf {
 		buf[i] = codeAlphabet[int(b)%len(codeAlphabet)]
 	}
