@@ -1,6 +1,7 @@
 package consumers
 
 import (
+	"analytics-service/internal/metrics"
 	"analytics-service/internal/models"
 	"analytics-service/pkg/logger"
 	"context"
@@ -148,12 +149,13 @@ func (c *ClickConsumer) loop(deliveries <-chan amqp.Delivery) error {
 
 			var event models.ClickEvent
 			if err := json.Unmarshal(delivery.Body, &event); err != nil {
-				// Malformed message: ack it, or the broker redelivers forever.
+				metrics.ClicksConsumedTotal.WithLabelValues("malformed").Inc()
 				logger.Log.Warn("discarding malformed click event", zap.Error(err))
 				_ = delivery.Ack(false)
 				continue
 			}
 
+			metrics.ClicksConsumedTotal.WithLabelValues("ok").Inc()
 			events = append(events, event)
 			last = delivery
 
@@ -177,21 +179,23 @@ func (c *ClickConsumer) flush(events []models.ClickEvent, last amqp.Delivery) {
 		return
 	}
 
+	metrics.ClicksBatchSize.Observe(float64(len(events)))
+
 	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
 	defer cancel()
 
-	if err := c.service.InsertClickEventBatch(ctx, events); err != nil {
-		logger.Log.Error("failed to persist clicks, requeueing",
-			zap.Int("count", len(events)),
-			zap.Error(err),
-		)
-		// multiple=true, requeue=true — hand the whole batch back to the broker.
+	start := time.Now()
+	err := c.service.InsertClickEventBatch(ctx, events)
+	metrics.ClicksFlushDuration.Observe(time.Since(start).Seconds())
+
+	if err != nil {
+		metrics.ClicksFlushTotal.WithLabelValues("requeued").Inc()
+		logger.Log.Error("failed to persist clicks, requeueing", zap.Error(err))
 		_ = last.Nack(true, true)
 		return
 	}
 
-	// multiple=true acks every unacknowledged message up to and including this
-	// one — a single ack per batch rather than one per message.
+	metrics.ClicksFlushTotal.WithLabelValues("ok").Inc()
 	if err := last.Ack(true); err != nil {
 		logger.Log.Warn("failed to acknowledge clicks", zap.Error(err))
 	}

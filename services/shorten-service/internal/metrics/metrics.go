@@ -57,7 +57,7 @@ func Instrument() gin.HandlerFunc {
 
 // RegisterPoolMetrics exposes pgxpool statistics. The functions are evaluated
 // at scrape time, so no background goroutine is needed.
-func RegisterPoolMetrics() {
+func RegisterDBPoolMetrics() {
 	stat := func(f func(*pgxpool.Stat) float64) func() float64 {
 		return func() float64 {
 			s := database.Stats()
@@ -80,7 +80,6 @@ func RegisterPoolMetrics() {
 		Name: "db_pool_max_conns", Help: "Configured pool ceiling.",
 	}, stat(func(s *pgxpool.Stat) float64 { return float64(s.MaxConns()) }))
 
-	// The RQ1 evidence.
 	promauto.NewCounterFunc(prometheus.CounterOpts{
 		Name: "db_pool_empty_acquire_total", Help: "Acquires that found no free connection.",
 	}, stat(func(s *pgxpool.Stat) float64 { return float64(s.EmptyAcquireCount()) }))

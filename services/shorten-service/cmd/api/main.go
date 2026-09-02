@@ -51,7 +51,7 @@ func run() error {
 
 	logger.Log.Info("connected to database")
 
-	metrics.RegisterPoolMetrics()
+	metrics.RegisterDBPoolMetrics()
 
 	health := handlers.NewHealthHandler(database.Ping)
 

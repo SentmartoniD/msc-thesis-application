@@ -57,8 +57,8 @@ func Instrument() gin.HandlerFunc {
 	}
 }
 
-// RegisterPoolMetrics exposes pgxpool statistics.
-func RegisterPoolMetrics() {
+// RegisterDBPoolMetrics exposes pgxpool statistics.
+func RegisterDBPoolMetrics() {
 	stat := func(f func(*pgxpool.Stat) float64) func() float64 {
 		return func() float64 {
 			s := database.Stats()
@@ -81,7 +81,6 @@ func RegisterPoolMetrics() {
 		Name: "db_pool_max_conns", Help: "Configured pool ceiling.",
 	}, stat(func(s *pgxpool.Stat) float64 { return float64(s.MaxConns()) }))
 
-	// The RQ1 evidence.
 	promauto.NewCounterFunc(prometheus.CounterOpts{
 		Name: "db_pool_empty_acquire_total", Help: "Acquires that found no free connection.",
 	}, stat(func(s *pgxpool.Stat) float64 { return float64(s.EmptyAcquireCount()) }))
@@ -89,4 +88,33 @@ func RegisterPoolMetrics() {
 	promauto.NewCounterFunc(prometheus.CounterOpts{
 		Name: "db_pool_empty_acquire_wait_seconds_total", Help: "Total time blocked waiting for a connection.",
 	}, stat(func(s *pgxpool.Stat) float64 { return s.EmptyAcquireWaitTime().Seconds() }))
+}
+
+type PublisherStats interface {
+	Published() int64
+	Dropped() int64
+	BufferUsed() int
+	BufferCapacity() int
+}
+
+func RegisterPublisherMetrics(p PublisherStats) {
+	promauto.NewCounterFunc(prometheus.CounterOpts{
+		Name: "clicks_published_total",
+		Help: "Click events successfully published to RabbitMQ.",
+	}, func() float64 { return float64(p.Published()) })
+
+	promauto.NewCounterFunc(prometheus.CounterOpts{
+		Name: "clicks_dropped_total",
+		Help: "Click events discarded: buffer full or broker unavailable.",
+	}, func() float64 { return float64(p.Dropped()) })
+
+	promauto.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "clicks_buffer_used",
+		Help: "Click events waiting in the publish buffer.",
+	}, func() float64 { return float64(p.BufferUsed()) })
+
+	promauto.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "clicks_buffer_capacity",
+		Help: "Configured publish buffer size.",
+	}, func() float64 { return float64(p.BufferCapacity()) })
 }

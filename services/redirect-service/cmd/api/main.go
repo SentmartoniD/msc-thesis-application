@@ -52,7 +52,7 @@ func run() error {
 
 	logger.Log.Info("connected to database")
 
-	metrics.RegisterPoolMetrics()
+	metrics.RegisterDBPoolMetrics()
 
 	var clickPublisher handlers.ClickPublisher = publishers.Noop{}
 
@@ -67,6 +67,7 @@ func run() error {
 		p.Start()
 		defer p.Close()
 
+		metrics.RegisterPublisherMetrics(p)
 		clickPublisher = p
 
 		logger.Log.Info("click publishing enabled", zap.String("exchange", cfg.RabbitMQExchange))

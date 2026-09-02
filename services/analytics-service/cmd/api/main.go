@@ -54,7 +54,7 @@ func run() error {
 
 	logger.Log.Info("connected to database")
 
-	metrics.RegisterPoolMetrics()
+	metrics.RegisterDBPoolMetrics()
 
 	clickRepository := repositories.NewClickRepository(database.Pool)
 	clickService := services.NewClickService(clickRepository)

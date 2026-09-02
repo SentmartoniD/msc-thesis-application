@@ -41,6 +41,29 @@ var (
 		Help:    "Time spent executing a database query.",
 		Buckets: []float64{0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1},
 	})
+
+	// rabbitmq metrics
+	ClicksConsumedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "clicks_consumed_total",
+		Help: "Click events taken off the queue, by outcome.",
+	}, []string{"outcome"})
+
+	ClicksFlushTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "clicks_flush_total",
+		Help: "Batch flushes by outcome.",
+	}, []string{"outcome"})
+
+	ClicksFlushDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "clicks_flush_duration_seconds",
+		Help:    "Time to persist one batch of click events.",
+		Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5},
+	})
+
+	ClicksBatchSize = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "clicks_batch_size",
+		Help:    "Click events per flushed batch.",
+		Buckets: []float64{1, 5, 10, 25, 50, 100, 250, 500},
+	})
 )
 
 // RegisterPoolMetrics exposes pgxpool statistics.
@@ -56,9 +79,9 @@ func Instrument() gin.HandlerFunc {
 	}
 }
 
-// RegisterPoolMetrics exposes pgxpool statistics. The functions are evaluated
+// RegisterDBPoolMetrics exposes pgxpool statistics. The functions are evaluated
 // at scrape time, so no background goroutine is needed.
-func RegisterPoolMetrics() {
+func RegisterDBPoolMetrics() {
 	stat := func(f func(*pgxpool.Stat) float64) func() float64 {
 		return func() float64 {
 			s := database.Stats()
@@ -81,7 +104,6 @@ func RegisterPoolMetrics() {
 		Name: "db_pool_max_conns", Help: "Configured pool ceiling.",
 	}, stat(func(s *pgxpool.Stat) float64 { return float64(s.MaxConns()) }))
 
-	// The RQ1 evidence.
 	promauto.NewCounterFunc(prometheus.CounterOpts{
 		Name: "db_pool_empty_acquire_total", Help: "Acquires that found no free connection.",
 	}, stat(func(s *pgxpool.Stat) float64 { return float64(s.EmptyAcquireCount()) }))
@@ -89,4 +111,15 @@ func RegisterPoolMetrics() {
 	promauto.NewCounterFunc(prometheus.CounterOpts{
 		Name: "db_pool_empty_acquire_wait_seconds_total", Help: "Total time blocked waiting for a connection.",
 	}, stat(func(s *pgxpool.Stat) float64 { return s.EmptyAcquireWaitTime().Seconds() }))
+}
+
+// Create the label combinations up front so the series exist at zero rather
+// than appearing only after the first occurrence.
+func init() {
+	for _, outcome := range []string{"ok", "malformed"} {
+		ClicksConsumedTotal.WithLabelValues(outcome)
+	}
+	for _, outcome := range []string{"ok", "requeued"} {
+		ClicksFlushTotal.WithLabelValues(outcome)
+	}
 }

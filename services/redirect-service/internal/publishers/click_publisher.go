@@ -34,11 +34,12 @@ type Noop struct{}
 func (Noop) Publish(models.ClickEvent) {}
 
 type ClickPublisher struct {
-	cfg     Config
-	events  chan models.ClickEvent
-	done    chan struct{}
-	wg      sync.WaitGroup
-	dropped atomic.Int64
+	cfg       Config
+	events    chan models.ClickEvent
+	done      chan struct{}
+	wg        sync.WaitGroup
+	dropped   atomic.Int64
+	published atomic.Int64
 
 	connection *amqp.Connection
 	channel    *amqp.Channel
@@ -133,8 +134,11 @@ func (p *ClickPublisher) send(event models.ClickEvent) error {
 		p.disconnect()
 		p.nextRetry = time.Now().Add(reconnectDelay)
 		logger.Log.Warn("publish failed, will reconnect", zap.Error(err))
+		return err
 	}
-	return err
+
+	p.published.Add(1)
+	return nil
 }
 
 func (p *ClickPublisher) connect() error {
@@ -170,3 +174,8 @@ func (p *ClickPublisher) disconnect() {
 		p.connection = nil
 	}
 }
+
+// metrics for prometheus
+func (p *ClickPublisher) Published() int64    { return p.published.Load() }
+func (p *ClickPublisher) BufferUsed() int     { return len(p.events) }
+func (p *ClickPublisher) BufferCapacity() int { return cap(p.events) }
