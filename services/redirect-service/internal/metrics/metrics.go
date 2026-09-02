@@ -57,8 +57,7 @@ func Instrument() gin.HandlerFunc {
 	}
 }
 
-// RegisterPoolMetrics exposes pgxpool statistics. The functions are evaluated
-// at scrape time, so no background goroutine is needed.
+// RegisterPoolMetrics exposes pgxpool statistics.
 func RegisterPoolMetrics() {
 	stat := func(f func(*pgxpool.Stat) float64) func() float64 {
 		return func() float64 {

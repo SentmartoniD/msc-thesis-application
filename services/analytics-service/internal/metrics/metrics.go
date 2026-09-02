@@ -43,8 +43,7 @@ var (
 	})
 )
 
-// Instrument records count and latency. Registered on the public router only,
-// so probes and scrapes never appear in the numbers.
+// RegisterPoolMetrics exposes pgxpool statistics.
 func Instrument() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		InFlight.Inc()
