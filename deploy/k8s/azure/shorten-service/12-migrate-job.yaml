@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: shorten-service-migrate
+  namespace: urlshortener
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: <acr>.azurecr.io/shorten-service:v1
+          command: ["/app/migrate"]
+          envFrom:
+            - configMapRef: { name: shorten-service-config }
+            - secretRef:    { name: shorten-service-secret }

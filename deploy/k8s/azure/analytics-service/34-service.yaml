@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: urlshortener
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+spec:
+  type: LoadBalancer
+  selector:
+    app: analytics-service
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+    - name: admin
+      port: 9090
+      targetPort: admin
