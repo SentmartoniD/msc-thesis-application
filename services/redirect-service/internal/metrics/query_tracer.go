@@ -42,3 +42,24 @@ func (QueryTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.Trac
 	}
 	DBQueriesTotal.WithLabelValues(outcome).Inc()
 }
+
+func (t *QueryTracer) TraceBatchStart(ctx context.Context, conn *pgx.Conn, data pgx.TraceBatchStartData) context.Context {
+	return context.WithValue(ctx, queryStartKey{}, time.Now())
+}
+
+// Called once per queued statement. Count each one so a batch of 500 inserts
+// reads as 500 queries, matching how the single-query path counts.
+func (t *QueryTracer) TraceBatchQuery(ctx context.Context, conn *pgx.Conn, data pgx.TraceBatchQueryData) {
+	outcome := "ok"
+	if data.Err != nil {
+		outcome = "error"
+	}
+	DBQueriesTotal.WithLabelValues(outcome).Inc()
+}
+
+// Duration is per batch, not per statement — a batch is one round trip.
+func (t *QueryTracer) TraceBatchEnd(ctx context.Context, conn *pgx.Conn, data pgx.TraceBatchEndData) {
+	if start, ok := ctx.Value(queryStartKey{}).(time.Time); ok {
+		DBQueryDuration.Observe(time.Since(start).Seconds())
+	}
+}
