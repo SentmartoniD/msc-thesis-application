@@ -72,7 +72,7 @@ services:
       retries: 10
 
   shorten-migrate:
-    build: ./services/shorten-service
+    build: ../../services/shorten-service
     entrypoint: ["/app/migrate"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -85,7 +85,7 @@ services:
       LOG_FORMAT: console
 
   analytics-migrate:
-    build: ./services/analytics-service
+    build: ../../services/analytics-service
     entrypoint: ["/app/migrate"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -98,7 +98,7 @@ services:
       LOG_FORMAT: console
 
   shorten-service:
-    build: ./services/shorten-service
+    build: ../../services/shorten-service
     depends_on:
       shorten-migrate: { condition: service_completed_successfully }
     ports:
@@ -115,7 +115,7 @@ services:
       LOG_LEVEL: debug
 
   redirect-service:
-    build: ./services/redirect-service
+    build: ../../services/redirect-service
     depends_on:
       shorten-migrate: { condition: service_completed_successfully }
       rabbitmq:        { condition: service_healthy }
@@ -134,7 +134,7 @@ services:
       LOG_LEVEL: debug
 
   analytics-service:
-    build: ./services/analytics-service
+    build: ../../services/analytics-service
     depends_on:
       analytics-migrate: { condition: service_completed_successfully }
       rabbitmq:          { condition: service_healthy }
@@ -160,6 +160,10 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-remote-write-receiver
     ports:
       - "9000:9090"
     configs:
