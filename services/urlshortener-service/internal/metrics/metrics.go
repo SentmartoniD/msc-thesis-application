@@ -1,9 +1,9 @@
 package metrics
 
 import (
-	"shorten-service/platform/database"
 	"strconv"
 	"time"
+	"urlshortener-service/platform/database"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"

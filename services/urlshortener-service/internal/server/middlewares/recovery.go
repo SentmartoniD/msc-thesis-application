@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"net/http"
-	"shorten-service/pkg/logger"
+	"urlshortener-service/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

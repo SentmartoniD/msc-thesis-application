@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"shorten-service/internal/config"
-	"shorten-service/internal/metrics"
-	"shorten-service/internal/repositories"
-	"shorten-service/internal/server/middlewares"
-	"shorten-service/internal/services"
-	"shorten-service/platform/database"
+	"urlshortener-service/internal/config"
+	"urlshortener-service/internal/metrics"
+	"urlshortener-service/internal/repositories"
+	"urlshortener-service/internal/server/middlewares"
+	"urlshortener-service/internal/services"
+	"urlshortener-service/platform/database"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -34,7 +34,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 func SetupAdminRouter(hh *HealthHandler) *gin.Engine {
 	router := newEngine()
 
-	router.GET("/healthz", hh.Live)
+	router.GET("/livez", hh.Live)
 	router.GET("/readyz", hh.Ready)
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))

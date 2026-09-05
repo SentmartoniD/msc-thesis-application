@@ -7,10 +7,10 @@ import (
 	"net"
 	"net/http"
 	"os/signal"
-	"shorten-service/internal/config"
-	"shorten-service/pkg/logger"
 	"syscall"
 	"time"
+	"urlshortener-service/internal/config"
+	"urlshortener-service/pkg/logger"
 
 	"go.uber.org/zap"
 )

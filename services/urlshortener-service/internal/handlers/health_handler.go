@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"shorten-service/pkg/logger"
 	"sync/atomic"
 	"time"
+	"urlshortener-service/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

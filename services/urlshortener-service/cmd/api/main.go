@@ -4,25 +4,25 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"shorten-service/internal/config"
-	"shorten-service/internal/handlers"
-	"shorten-service/internal/metrics"
-	"shorten-service/internal/server"
-	"shorten-service/pkg/logger"
-	"shorten-service/platform/database"
+	"urlshortener-service/internal/config"
+	"urlshortener-service/internal/handlers"
+	"urlshortener-service/internal/metrics"
+	"urlshortener-service/internal/server"
+	"urlshortener-service/pkg/logger"
+	"urlshortener-service/platform/database"
 
 	"go.uber.org/zap"
 )
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "shorten-service failed:", err)
+		fmt.Fprintln(os.Stderr, "urlshortener-service failed:", err)
 		os.Exit(1)
 	}
 }
 
 func run() error {
-	cfg, err := config.Load("shorten-service")
+	cfg, err := config.Load("urlshortener-service")
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func run() error {
 
 	ctx := context.Background()
 
-	if err := database.Connect(ctx, cfg, metrics.QueryTracer{}); err != nil {
+	if err := database.Connect(ctx, cfg, &metrics.QueryTracer{}); err != nil {
 		return fmt.Errorf("connecting to database: %w", err)
 	}
 	defer database.Close()

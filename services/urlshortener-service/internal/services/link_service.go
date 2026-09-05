@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"shorten-service/internal/config"
-	"shorten-service/internal/models"
-	"shorten-service/internal/repositories"
 	"time"
+	"urlshortener-service/internal/config"
+	"urlshortener-service/internal/models"
+	"urlshortener-service/internal/repositories"
 )
 
 const (
@@ -58,7 +58,7 @@ func (s *LinkService) CreateLink(ctx context.Context, req models.CreateLinkReque
 		// success then return link
 		if err == nil {
 			return link.ToLinkResponse(s.cfg.ShortBaseURL), nil
-			// code already used then contionue
+			// code already used then continue
 		} else if errors.Is(err, repositories.ErrorCodeUsed) {
 			continue
 		}

@@ -1,4 +1,4 @@
-module shorten-service
+module urlshortener-service
 
 go 1.25.1
 

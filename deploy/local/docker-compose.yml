@@ -13,9 +13,9 @@ configs:
           static_configs:
             - targets: ["redirect-service:9090"]
 
-        - job_name: shorten-service
+        - job_name: urlshortener-service
           static_configs:
-            - targets: ["shorten-service:9090"]
+            - targets: ["urlshortener-service:9090"]
 
         - job_name: analytics-service
           static_configs:
@@ -72,7 +72,7 @@ services:
       retries: 10
 
   shorten-migrate:
-    build: ../../services/shorten-service
+    build: ../../services/urlshortener-service
     entrypoint: ["/app/migrate"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -97,8 +97,8 @@ services:
       DB_SSLMODE: disable
       LOG_FORMAT: console
 
-  shorten-service:
-    build: ../../services/shorten-service
+  urlshortener-service:
+    build: ../../services/urlshortener-service
     depends_on:
       shorten-migrate: { condition: service_completed_successfully }
     ports:
@@ -173,7 +173,7 @@ services:
       - promdata:/prometheus
     depends_on:
       - redirect-service
-      - shorten-service
+      - urlshortener-service
       - analytics-service
 
   grafana:

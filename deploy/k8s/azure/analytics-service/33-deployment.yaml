@@ -43,6 +43,7 @@ spec:
           readinessProbe:
             httpGet: { path: /readyz, port: admin }
             periodSeconds: 5
+            timeoutSeconds: 3
           resources:
             requests:
               cpu: "500m"

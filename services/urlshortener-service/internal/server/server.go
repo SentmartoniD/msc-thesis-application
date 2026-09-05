@@ -3,8 +3,8 @@ package server
 import (
 	"log"
 	"net/http"
-	"shorten-service/internal/config"
-	"shorten-service/pkg/logger"
+	"urlshortener-service/internal/config"
+	"urlshortener-service/pkg/logger"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

@@ -29,7 +29,7 @@ func SetupRouter(publisher ClickPublisher) *gin.Engine {
 func SetupAdminRouter(hh *HealthHandler) *gin.Engine {
 	router := newEngine()
 
-	router.GET("/healthz", hh.Live)
+	router.GET("/livez", hh.Live)
 	router.GET("/readyz", hh.Ready)
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))

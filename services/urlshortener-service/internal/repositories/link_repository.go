@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"shorten-service/internal/models"
 	"time"
+	"urlshortener-service/internal/models"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"

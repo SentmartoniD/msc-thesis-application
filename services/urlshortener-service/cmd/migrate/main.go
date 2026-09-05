@@ -3,23 +3,22 @@ package main
 import (
 	"fmt"
 	"os"
-	"shorten-service/internal/config"
-	"shorten-service/pkg/logger"
-	"shorten-service/platform/database/migrations"
+	"urlshortener-service/internal/config"
+	"urlshortener-service/pkg/logger"
+	"urlshortener-service/platform/database/migrations"
 
 	"go.uber.org/zap"
 )
 
 func main() {
 	if err := run(); err != nil {
-		// The logger may not exist yet, so stderr is the only guaranteed sink.
 		fmt.Fprintln(os.Stderr, "migrate failed:", err)
 		os.Exit(1)
 	}
 }
 
 func run() error {
-	cfg, err := config.Load("shorten-service-migrate")
+	cfg, err := config.Load("urlshortener-service-migrate")
 	if err != nil {
 		return err
 	}

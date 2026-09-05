@@ -238,7 +238,7 @@ func (c *Config) GetPostgreSQLConnectionString() string {
 // pgx/v5 driver registers
 func (c *Config) GetMigrationPostgreSQLConnectionString() string {
 	cStr := "pgx5://" + strings.TrimPrefix(c.GetPostgreSQLConnectionString(), "postgres://")
-	return cStr + "&x-migrations-table=schema_migrations_shorten_service"
+	return cStr + "&x-migrations-table=schema_migrations_urlshortener_service"
 }
 
 func (c *Config) Addr() string {
