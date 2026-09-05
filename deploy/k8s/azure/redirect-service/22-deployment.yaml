@@ -38,7 +38,7 @@ spec:
             periodSeconds: 2
             failureThreshold: 30
           livenessProbe:
-            httpGet: { path: /healthz, port: admin }
+            httpGet: { path: /livez, port: admin }
             periodSeconds: 10
           readinessProbe:
             httpGet: { path: /readyz, port: admin }
