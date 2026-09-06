@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
-  namespace: urlshortener
+  namespace: redirect-application
 data:
   prometheus.yml: |
     global:
@@ -14,11 +14,11 @@ data:
         kubernetes_sd_configs:
           - role: pod
             namespaces:
-              names: [urlshortener]
+              names: [redirect-application]
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_label_app]
             action: keep
-            regex: (shorten|redirect|analytics)-service
+            regex: (urlshortener|redirect|analytics)-service
           - source_labels: [__meta_kubernetes_pod_ip]
             regex: (.+)
             target_label: __address__

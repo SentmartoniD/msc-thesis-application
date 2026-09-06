@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: analytics-service-migrate
+  name: urlshortener-service-migrate
   namespace: redirect-application
 spec:
   backoffLimit: 3
@@ -11,8 +11,8 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: <acr>.azurecr.io/analytics-service:v1
+          image: <acr>.azurecr.io/urlshortener-service:v1
           command: ["/app/migrate"]
           envFrom:
-            - configMapRef: { name: analytics-service-config }
-            - secretRef:    { name: analytics-service-secret }
+            - configMapRef: { name: urlshortener-service-config }
+            - secretRef:    { name: urlshortener-service-secret }

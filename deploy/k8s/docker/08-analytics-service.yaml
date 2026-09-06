@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: analytics-config
-  namespace: urlshortener
+  namespace: redirect-application
 data:
   DB_HOST: "postgres-analytics"
   DB_NAME: "analytics"
@@ -20,7 +20,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: analytics-migrate
-  namespace: urlshortener
+  namespace: redirect-application
 spec:
   backoffLimit: 3
   template:
@@ -41,7 +41,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: analytics-service
-  namespace: urlshortener
+  namespace: redirect-application
 spec:
   replicas: 1
   selector:
@@ -86,7 +86,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: analytics-service
-  namespace: urlshortener
+  namespace: redirect-application
 spec:
   selector:
     app: analytics-service

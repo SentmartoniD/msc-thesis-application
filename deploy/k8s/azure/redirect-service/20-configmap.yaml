@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: redirect-service-config
-  namespace: urlshortener
+  namespace: redirect-application
 data:
   # HTTP
   SERVER_PORT: "8000"

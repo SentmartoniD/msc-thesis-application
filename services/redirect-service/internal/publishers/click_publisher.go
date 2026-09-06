@@ -120,8 +120,6 @@ func (p *ClickPublisher) send(event models.ClickEvent) error {
 	ctx, cancel := context.WithTimeout(context.Background(), publishTimeout)
 	defer cancel()
 
-	// Transient delivery: persisting every click would make the broker fsync
-	// per message. Losing clicks on a broker restart is fine for analytics.
 	err = p.channel.PublishWithContext(ctx,
 		p.cfg.Exchange, p.cfg.RoutingKey, false, false,
 		amqp.Publishing{
@@ -142,11 +140,13 @@ func (p *ClickPublisher) send(event models.ClickEvent) error {
 }
 
 func (p *ClickPublisher) connect() error {
+	// create tcp connection
 	connection, err := amqp.Dial(p.cfg.URL)
 	if err != nil {
 		return err
 	}
 
+	// create ampq channel on top of tcp
 	channel, err := connection.Channel()
 	if err != nil {
 		_ = connection.Close()

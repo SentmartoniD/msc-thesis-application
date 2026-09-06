@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: shorten-service
-  namespace: urlshortener
+  name: urlshortener-service
+  namespace: redirect-application
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: shorten-service
+      app: urlshortener-service
   template:
     metadata:
       labels:
-        app: shorten-service
+        app: urlshortener-service
         tier: app
     spec:
       terminationGracePeriodSeconds: 30
@@ -24,15 +24,15 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: api
-          image: <acr>.azurecr.io/shorten-service:v1
+          image: <acr>.azurecr.io/urlshortener-service:v1
           ports:
             - name: http
               containerPort: 8000
             - name: admin
               containerPort: 9090
           envFrom:
-            - configMapRef: { name: shorten-service-config }
-            - secretRef:    { name: shorten-service-secret }
+            - configMapRef: { name: urlshortener-service-config }
+            - secretRef:    { name: urlshortener-service-secret }
           startupProbe:
             httpGet: { path: /readyz, port: admin }
             periodSeconds: 2

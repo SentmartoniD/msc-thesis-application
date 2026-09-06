@@ -10,43 +10,52 @@ if ($EndEpoch -eq 0) { $EndEpoch = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() 
 $W = "${WindowSeconds}s"
 $S = $WindowSeconds
 
+# Rewrites cAdvisor's "pod" label into a "job" label holding the deployment
+# name, by stripping the ReplicaSet hash and pod suffix.
+$ByService = '"job", "$1", "pod", "^(.*)-[^-]+-[^-]+$"'
+$Cont = "namespace=`"redirect-application`", container!=`"`""
+
 # metric name -> PromQL. $W is the window, $S the window in seconds.
 $queries = [ordered]@{
   # ---- HTTP, per service
   "throughput_rps"        = "sum by (job) (increase(http_requests_total[$W])) / $S"
-  "errors_rps"            = "sum by (job) (increase(http_requests_total{status=~`"5..`"}[$W])) / $S"
-  "error_ratio"           = "sum by (job) (increase(http_requests_total{status=~`"5..`"}[$W])) / sum by (job) (increase(http_requests_total[$W]))"
+  "errors_rps"            = "(sum by (job) (increase(http_requests_total{status=~`"5..`"}[$W])) or sum by (job) (increase(http_requests_total[$W])) * 0) / $S"
+  "error_ratio"           = "(sum by (job) (increase(http_requests_total{status=~`"5..`"}[$W])) or sum by (job) (increase(http_requests_total[$W])) * 0) / sum by (job) (increase(http_requests_total[$W]))"
   "latency_p50_s"         = "histogram_quantile(0.50, sum by (job, le) (rate(http_request_duration_seconds_bucket[$W])))"
   "latency_p95_s"         = "histogram_quantile(0.95, sum by (job, le) (rate(http_request_duration_seconds_bucket[$W])))"
   "latency_p99_s"         = "histogram_quantile(0.99, sum by (job, le) (rate(http_request_duration_seconds_bucket[$W])))"
-  "in_flight_avg"         = "avg_over_time(http_requests_in_flight[$W])"
-  "in_flight_max"         = "max_over_time(http_requests_in_flight[$W])"
+  "in_flight_avg"         = "sum by (job) (avg_over_time(http_requests_in_flight[$W]))"
+  "in_flight_max"         = "max by (job) (max_over_time(http_requests_in_flight[$W]))"
 
   # ---- database queries
   "db_query_rps"          = "sum by (job) (increase(db_queries_total[$W])) / $S"
-  "db_query_errors"       = "sum by (job) (increase(db_queries_total{outcome=`"error`"}[$W]))"
+  "db_query_errors"       = "sum by (job) (increase(db_queries_total{outcome=`"error`"}[$W])) or sum by (job) (increase(db_queries_total[$W])) * 0"
   "db_query_p95_s"        = "histogram_quantile(0.95, sum by (job, le) (rate(db_query_duration_seconds_bucket[$W])))"
 
   # ---- connection pool  (the RQ1 evidence)
-  "pool_max"              = "max_over_time(db_pool_max_conns[$W])"
-  "pool_acquired_avg"     = "avg_over_time(db_pool_acquired_conns[$W])"
-  "pool_acquired_max"     = "max_over_time(db_pool_acquired_conns[$W])"
-  "pool_utilisation_avg"  = "avg_over_time(db_pool_acquired_conns[$W]) / max_over_time(db_pool_max_conns[$W])"
-  "pool_empty_acquires"   = "increase(db_pool_empty_acquire_total[$W])"
-  "pool_wait_total_s"     = "increase(db_pool_empty_acquire_wait_seconds_total[$W])"
-  "pool_wait_mean_s"      = "increase(db_pool_empty_acquire_wait_seconds_total[$W]) / increase(db_pool_empty_acquire_total[$W])"
+  "pool_max_total"        = "sum by (job) (max_over_time(db_pool_max_conns[$W]))"
+  "pool_max_per_pod"      = "avg by (job) (max_over_time(db_pool_max_conns[$W]))"
+  "pool_acquired_total"   = "sum by (job) (avg_over_time(db_pool_acquired_conns[$W]))"
+  "pool_acquired_per_pod" = "avg by (job) (avg_over_time(db_pool_acquired_conns[$W]))"
+  "pool_acquired_max_pod" = "max by (job) (max_over_time(db_pool_acquired_conns[$W]))"
+  "pool_utilisation_avg"  = "sum by (job) (avg_over_time(db_pool_acquired_conns[$W])) / sum by (job) (max_over_time(db_pool_max_conns[$W]))"
+  "pool_empty_acquires"   = "sum by (job) (increase(db_pool_empty_acquire_total[$W]))"
+  "pool_wait_total_s"     = "sum by (job) (increase(db_pool_empty_acquire_wait_seconds_total[$W]))"
+  "pool_wait_mean_s"      = "sum by (job) (increase(db_pool_empty_acquire_wait_seconds_total[$W])) / sum by (job) (increase(db_pool_empty_acquire_total[$W]))"
 
-  # ---- resources, per service
-  "cpu_cores_avg"         = "increase(process_cpu_seconds_total[$W]) / $S"
-  "memory_mb_avg"         = "avg_over_time(process_resident_memory_bytes[$W]) / 1024 / 1024"
-  "memory_mb_max"         = "max_over_time(process_resident_memory_bytes[$W]) / 1024 / 1024"
-  "goroutines_max"        = "max_over_time(go_goroutines[$W])"
+  # ---- resources, from cAdvisor: covers postgres and rabbitmq too
+  "cpu_cores_total"       = "sum by (job) (label_replace(sum by (pod) (rate(container_cpu_usage_seconds_total{$Cont}[$W])), $ByService))"
+  "cpu_cores_per_pod_avg" = "avg by (job) (label_replace(sum by (pod) (rate(container_cpu_usage_seconds_total{$Cont}[$W])), $ByService))"
+  "cpu_cores_per_pod_max" = "max by (job) (label_replace(sum by (pod) (rate(container_cpu_usage_seconds_total{$Cont}[$W])), $ByService))"
+  "memory_mb_total"       = "sum by (job) (label_replace(sum by (pod) (avg_over_time(container_memory_working_set_bytes{$Cont}[$W])), $ByService)) / 1024 / 1024"
+  "memory_mb_per_pod_max" = "max by (job) (label_replace(sum by (pod) (max_over_time(container_memory_working_set_bytes{$Cont}[$W])), $ByService)) / 1024 / 1024"
+  "goroutines_max"        = "max by (job) (max_over_time(go_goroutines[$W]))"
 
   # ---- async path
-  "clicks_published"      = "increase(clicks_published_total[$W])"
-  "clicks_dropped"        = "increase(clicks_dropped_total[$W])"
-  "clicks_consumed"       = "increase(clicks_consumed_total{outcome=`"ok`"}[$W])"
-  "clicks_buffer_util"    = "avg_over_time(clicks_buffer_used[$W]) / max_over_time(clicks_buffer_capacity[$W])"
+  "clicks_published"      = "sum by (job) (increase(clicks_published_total[$W]))"
+  "clicks_dropped"        = "sum by (job) (increase(clicks_dropped_total[$W]))"
+  "clicks_consumed"       = "sum by (job) (increase(clicks_consumed_total{outcome=`"ok`"}[$W]))"
+  "clicks_buffer_util"    = "avg by (job) (avg_over_time(clicks_buffer_used[$W])) / avg by (job) (max_over_time(clicks_buffer_capacity[$W]))"
   "queue_depth_avg"       = "avg_over_time(rabbitmq_queue_messages_ready[$W])"
   "queue_depth_max"       = "max_over_time(rabbitmq_queue_messages_ready[$W])"
   "flush_p95_s"           = "histogram_quantile(0.95, sum by (le) (rate(clicks_flush_duration_seconds_bucket[$W])))"
@@ -79,7 +88,9 @@ $rows = foreach ($name in $queries.Keys) {
       end_epoch  = $EndEpoch
       window_s   = $WindowSeconds
       metric     = $name
-      job        = $(if ($series.metric.job) { $series.metric.job } else { "-" })
+      job        = $(if ($series.metric.job) { $series.metric.job }
+                     elseif ($series.metric.pod) { $series.metric.pod }
+                     else { "-" })
       value      = [double]$series.value[1]
     }
   }

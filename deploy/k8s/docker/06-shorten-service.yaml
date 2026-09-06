@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: shorten-config
-  namespace: urlshortener
+  namespace: redirect-application
 data:
   DB_HOST: "postgres-urlshortener"
   DB_NAME: "urlshortener"
@@ -16,7 +16,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: shorten-migrate
-  namespace: urlshortener
+  namespace: redirect-application
 spec:
   backoffLimit: 3
   template:
@@ -38,7 +38,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: shorten-service
-  namespace: urlshortener
+  namespace: redirect-application
 spec:
   replicas: 1
   selector:
@@ -87,7 +87,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: shorten-service
-  namespace: urlshortener
+  namespace: redirect-application
 spec:
   type: NodePort
   selector:

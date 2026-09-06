@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: common-config
-  namespace: urlshortener
+  namespace: redirect-application
 data:
   # Only values every service reads AND that should change for all at once.
   DB_PORT: "5432"
